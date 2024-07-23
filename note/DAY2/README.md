@@ -28,7 +28,7 @@ Linux是一个通用操作系统，其在嵌入式系统中的应用通常包含
 ##RT_Thread
 ### 初始化流程
 
-![image-20240723102242708.png](a1992662197db6b981a36dd150b62ae0.png.webp)
+![image-20240723102242708.png](https://oss-club.rt-thread.org/uploads/20240723/a1992662197db6b981a36dd150b62ae0.png.webp)
 
 
 
@@ -40,8 +40,8 @@ Linux是一个通用操作系统，其在嵌入式系统中的应用通常包含
 
 #### 系统线程-空闲线程
 
-		空闲线程是系统创建的**最低优先级**的线程，线程状态**永远为就绪态**。当系统中**无其他就绪态线程**存在时，调度器将调度到空闲线程。它通常是一个**死循环**，且永远**不能被挂起**。
-		空闲线程在 RT-Thread 中有着特殊的用途:
+​		空闲线程是系统创建的**最低优先级**的线程，线程状态**永远为就绪态**。当系统中**无其他就绪态线程**存在时，调度器将调度到空闲线程。它通常是一个**死循环**，且永远**不能被挂起**。
+​		空闲线程在 RT-Thread 中有着特殊的用途:
 
 1. 若某线程运行完毕，系统将**自动删除线程**:自动执行 rt_thread_exit()函数，先将该线程从系统就绪队列中删除，再将该线程的状态更改为关闭状态，不再参与系统调度，然后挂入rt_thread_defunct 的僵尸队列（资源未回收、处于关闭状态的线程队列 ）中，最后由空闲线程回收被删除线程的资源。
 2. 空闲线程也提供了接口来运行用户设置的**钩子函数**，在空闲线程运行时会调用该钩子函数，适合**钩入功耗管理、看门狗喂狗等工作**。空闲线程必须有得到**执行的机会**，即其他线程不允许一直while(1)死卡，必须调用具有**阻塞性质的函数**;否则例如线程删除、回收等操作将无法得到正确执行。
@@ -78,11 +78,11 @@ Linux是一个通用操作系统，其在嵌入式系统中的应用通常包含
 
 ##### 注意：
 
-作为一个优先级明确的实时系统，如果一个线程中的程序陷入死循环操作，那么比他优先级更低的线程都将不能够得到执行。因此在实时操作系统中必须注意要有让出CPU使用权的动作，如循环中**调用延时函数或者主动挂起（线程进入挂起状态）**。
+作为一个优先级明确的实时系统，如果一个线程中的程序陷入死循环操作，那么比它优先级更低的线程都将不能够得到执行。因此在实时操作系统中必须注意要有让出CPU使用权的动作，如循环中**调用延时函数或者主动挂起（线程进入挂起状态）**。
 
 #### 线程状态之间切换
 
-![image-20240501200232919.png](a3f58787799e7d3889ddd18301a18f19.png.webp)
+![image-20240501200232919.png](https://oss-club.rt-thread.org/uploads/20240723/a3f58787799e7d3889ddd18301a18f19.png.webp)
 
 ### 线程相关操作
 
@@ -151,3 +151,57 @@ else{
 ##### 线程睡眠
 
  rt_thread_sleep或rt_thread_delay函数使当前线程进入挂起状态或者睡眠状态。
+###线程示例
+
+```c
+#include <board.h>
+#include <rtthread.h>
+#include <drv_gpio.h>
+#ifndef RT_USING_NANO
+#include <rtdevice.h>
+#include <rtdbg.h>
+#endif /* RT_USING_NANO */
+
+
+rt_thread_t th1,th2 = RT_NULL;
+ 
+void th1_entry(void){
+    while (1)
+    {
+        rt_kprintf("th1 is running...\n");
+        rt_thread_mdelay(500);
+    }
+    
+}
+
+void th2_entry(void){
+    while (1)
+    {
+        rt_kprintf("th2 is running...\n");
+        rt_thread_mdelay(500);
+    }
+}
+
+int main(void)
+{
+
+    th1 = rt_thread_create("th1", th1_entry, RT_NULL, 1024, 20, 5);
+    if(th1 == RT_NULL){
+        LOG_E("thread th1 create failed...\n");
+    }
+    else{
+        rt_thread_startup(th1);
+        LOG_D("thread th1 create success!\n");
+    }
+    th2 = rt_thread_create("th2", th2_entry, RT_NULL, 1024, 21, 5);
+    if(th2 == RT_NULL){
+        LOG_E("thread th2 create failed...\n");
+    }
+    else{
+        rt_thread_startup(th2);
+        LOG_D("thread th2 create success!\n");
+    }
+}
+
+```
+![screenshot_image.png](https://oss-club.rt-thread.org/uploads/20240723/9fb581f08b05bde6e30b977a74f86ff4.png)
